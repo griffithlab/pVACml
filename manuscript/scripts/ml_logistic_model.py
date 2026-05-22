@@ -26,14 +26,14 @@ from imblearn.pipeline import Pipeline as ImbPipeline
 
 # %% Paths (for reproducibility when used as a standalone script)
 BASE_DIR = Path(__file__).resolve().parents[1]
-data_dir = BASE_DIR / "data"
+data_dir = BASE_DIR / "data" / "training_testing_data"
 outdir = BASE_DIR / "results" / "logistic_regression"
 outdir.mkdir(parents=True, exist_ok=True)
 
 
 # %% Load data
-train_data = pd.read_csv(data_dir / "train_data_python.csv")
-test_data = pd.read_csv(data_dir / "test_data_python.csv")
+train_data = pd.read_csv(data_dir / "training_set.csv")
+test_data = pd.read_csv(data_dir / "development_test_set.csv")
 
 # Separate features and target for training data
 X_train = train_data.drop(columns=['Evaluation'])
