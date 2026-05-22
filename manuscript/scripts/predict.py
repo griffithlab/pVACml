@@ -1,25 +1,24 @@
 """
-Simple prediction script for ITB_Automation_ML_Predictor.
+Simple prediction script for pVACml.
 
 This script:
 - Merges pVACtools-style MHC class I and class II outputs for a single case
 - Applies the published imputer and label encoders
-- Uses the trained Balanced Random Forest model to score each epitope
+- Uses the trained Random Forest model to score each epitope
 - Writes a single aggregated TSV with updated ML predictions for MHC class I
 
-Inputs (from data/predict_new_case_data):
+Inputs (from manuscript/data/predict_new_case_data):
 - <sample>.MHC_I.all_epitopes.aggregated.tsv
 - <sample>.MHC_I.all_epitopes.tsv
 - <sample>.MHC_II.all_epitopes.aggregated.tsv
 
 Usage (from repository root):
-    python scripts/predict.py \\
+    python manuscript/scripts/predict.py \\
         --sample-name Test \\
-        --artifacts-dir model_artifacts \\
-        --output-dir results/predictions
+        --artifacts-dir models/v1_manuscript \\
+        --output-dir manuscript/test_prediction_results/predictions
 
-This implementation is adapted from pvactools' ml_predictor module, but
-restricted to the ITB_Automation_ML_Predictor repository layout.
+This implementation is adapted from pVACtools' ml_predictor module, but restricted to the pVACml repository layout.
 """
 
 from __future__ import annotations
@@ -35,9 +34,10 @@ import pickle
 
 def _get_repo_paths() -> Tuple[Path, Path, Path]:
     """Return base, data, and default artifacts directories for this repo."""
-    base_dir = Path(__file__).resolve().parents[1]
-    data_dir = base_dir / "data" / "predict_new_case_data"
-    artifacts_dir = base_dir / "model_artifacts"
+    # predict.py lives at manuscript/scripts/ → repo root is parents[2]
+    base_dir = Path(__file__).resolve().parents[2]
+    data_dir = base_dir / "manuscript" / "data" / "predict_new_case_data"
+    artifacts_dir = base_dir / "models" / "v1_manuscript"
     return base_dir, data_dir, artifacts_dir
 
 
@@ -48,17 +48,23 @@ def _resolve_artifact_paths(
     """
     Resolve paths to model artifacts in the given directory for a specific version.
 
-    For artifacts_version='numpy126', expected layout is:
-      <artifacts_dir>/numpy126/
-        - rf_downsample_model_numpy126.pkl
-        - trained_imputer_numpy126.joblib
-        - label_encoders_numpy126.pkl
+    Supported layouts:
+      (1) Flat: ``<artifacts_dir>/rf_downsample_model_{version}.pkl``, etc.
+      (2) Nested: ``<artifacts_dir>/{version}/rf_downsample_model_{version}.pkl``, etc.
     """
-    artifacts_subdir = artifacts_dir / artifacts_version
-    model_path = artifacts_subdir / f"rf_downsample_model_{artifacts_version}.pkl"
-    imputer_path = artifacts_subdir / f"trained_imputer_{artifacts_version}.joblib"
-    encoders_path = artifacts_subdir / f"label_encoders_{artifacts_version}.pkl"
-    return model_path, imputer_path, encoders_path
+    flat = (
+        artifacts_dir / f"rf_downsample_model_{artifacts_version}.pkl",
+        artifacts_dir / f"trained_imputer_{artifacts_version}.joblib",
+        artifacts_dir / f"label_encoders_{artifacts_version}.pkl",
+    )
+    if flat[0].is_file():
+        return flat
+    nested = artifacts_dir / artifacts_version
+    return (
+        nested / f"rf_downsample_model_{artifacts_version}.pkl",
+        nested / f"trained_imputer_{artifacts_version}.joblib",
+        nested / f"label_encoders_{artifacts_version}.pkl",
+    )
 
 
 def merge_and_prepare_data(
@@ -494,8 +500,8 @@ def run_predictions(
 
 # Hard-coded configuration for manuscript reproducibility
 SAMPLE_NAME = "Test"
-ARTIFACTS_DIR = Path(__file__).resolve().parents[1] / "model_artifacts"
-OUTPUT_DIR = Path(__file__).resolve().parents[1] / "results" / "predictions"
+ARTIFACTS_DIR = Path(__file__).resolve().parents[2] / "models" / "v1_manuscript"
+OUTPUT_DIR = Path(__file__).resolve().parents[2] / "results" / "predictions"
 ARTIFACTS_VERSION = "numpy126"
 ML_THRESHOLD_ACCEPT = 0.55
 ML_THRESHOLD_REJECT = 0.30
