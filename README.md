@@ -22,7 +22,7 @@ The repository is organized into **two independent tracks**. They use **differen
 **Important distinctions**
 
 - The **manuscript** track reflects the paper’s analyses and bundled manuscript model. It is **not** the same artifact bundle that ships inside pVACtools 7.0.
-- The **pVACtools 7.0** track is the one meant for **future retraining** and for the files that are **copied into the pVACtools codebase** for the v7 ML pipeline. The staging folder is **`model/pvactools7.0_model/`**, which corresponds to [`pvactools/supporting_files/ml_model_artifacts/`](https://github.com/griffithlab/pVACtools/tree/master/pvactools/supporting_files/ml_model_artifacts) in [griffithlab/pVACtools](https://github.com/griffithlab/pVACtools) (see [`model/pvactools7.0_model/README.md`](model/pvactools7.0_model/README.md) and [`model/README.txt`](model/README.txt)).
+- The **pVACtools 7.0** track is the one meant for **future retraining** and for the files that are **copied into the pVACtools codebase** for the v7 ML pipeline. The staging folder is **`model/pvactools7.0_model/`**, which corresponds to [`pvactools/supporting_files/ml_model_artifacts/`](https://github.com/griffithlab/pVACtools/tree/master/pvactools/supporting_files/ml_model_artifacts) in [griffithlab/pVACtools](https://github.com/griffithlab/pVACtools) (see [`model/pvactools7.0_model/README.md`](model/pvactools7.0_model/README.md)).
 
 > End users running pVACseq with ML enabled should follow [pVACtools documentation](https://pvactools.readthedocs.io) (e.g. `pvacseq add_ml_predictions`). This README focuses on **developers** reproducing the paper or refreshing the v7 model from this repo.
 
@@ -134,7 +134,7 @@ The directory **`model/pvactools7.0_model/`** holds the model bundle **intended 
 |---------------|----------------|
 | `model/pvactools7.0_model/` | `pvactools/supporting_files/ml_model_artifacts/` |
 
-Git cannot keep two folders in different repositories synchronized by itself; the link above is the **canonical upstream location**. Use copy/PR (or an internal sync script) to publish updates. See [`model/pvactools7.0_model/README.md`](model/pvactools7.0_model/README.md) and [`model/README.txt`](model/README.txt).
+Git cannot keep two folders in different repositories synchronized by itself; the link above is the **canonical upstream location**. Use copy/PR (or an internal sync script) to publish updates. See [`model/pvactools7.0_model/README.md`](model/pvactools7.0_model/README.md).
 
 After retraining, ensure filenames and layout match what the pVACtools integration expects before copying.
 
