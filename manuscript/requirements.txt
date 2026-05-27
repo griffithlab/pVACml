@@ -1,0 +1,26 @@
+# Direct dependencies for `manuscript/scripts/*.py` only.
+# Stdlib (pathlib, pickle, typing, collections, etc.) is not listed.
+#
+# Python: use 3.13.x
+#
+# Used by:
+#   - imbalanced-learn: ml_randomforest_model.py, ml_logistic_model.py
+#   - joblib: predict.py
+#   - matplotlib: ml_logistic_model.py, evaluation_on_prospective_test_set.py,
+#                 review_time_analysis.py, ml_randomforest_model.py (pyplot)
+#   - numpy, pandas: all scripts
+#   - scipy: review_time_analysis.py
+#   - scikit-learn: ml_randomforest_model.py, ml_logistic_model.py,
+#                   evaluation_on_prospective_test_set.py, imputation_analysis.py
+#   - seaborn: ml_logistic_model.py, review_time_analysis.py
+#
+# Install: pip install -r requirements.txt
+
+imbalanced-learn==0.13.0
+joblib==1.4.2
+matplotlib==3.10.1
+numpy==2.2.2
+pandas==2.2.3
+scipy==1.15.2
+scikit-learn==1.6.1
+seaborn==0.13.2

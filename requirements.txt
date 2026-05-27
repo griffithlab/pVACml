@@ -1,31 +1,25 @@
-# Direct dependencies for `manuscript/scripts/*.py` only.
-# Stdlib (pathlib, pickle, typing, collections, etc.) is not listed.
+# -----------------------------------------------------------------------------
+# ITB_Automation_ML_Predictor — impute_missing.py, train.py, predict.py
+# -----------------------------------------------------------------------------
+# Pinned to match conda env ``neoantigen_ml_numpy126`` (``pip show`` versions).
+# Python there is 3.11.x.
 #
-# Python: use 3.13.x (tested; matches conda env neoantigen_ml). Pip does not
-# enforce Python version from this file—repeat this in the README so users pick
-# the right interpreter when creating a venv (e.g. `python3.13 -m venv .venv`).
+# Suggested setup (venv or conda + pip):
+#   conda create -n itb_ml python=3.11 -y
+#   conda activate itb_ml
+#   pip install -r requirements.txt
 #
-# Used by:
-#   - imbalanced-learn: ml_randomforest_model.py, ml_logistic_model.py
-#   - joblib: predict.py
-#   - matplotlib: ml_logistic_model.py, evaluation_on_prospective_test_set.py,
-#                 review_time_analysis.py, ml_randomforest_model.py (pyplot)
-#   - numpy, pandas: all scripts
-#   - scipy: review_time_analysis.py
-#   - scikit-learn: ml_randomforest_model.py, ml_logistic_model.py,
-#                   evaluation_on_prospective_test_set.py, imputation_analysis.py
-#   - seaborn: ml_logistic_model.py, review_time_analysis.py
-#
-# Install: pip install -r requirements.txt
-#
-# Version pins match conda env `neoantigen_ml` on Python 3.13. Adjust if your
-# platform cannot install an exact wheel (e.g. use a nearby numpy/scipy build).
+# Notes:
+# - ``predict.py`` loads a pickled ``BalancedRandomForestClassifier``; that requires
+#   ``imbalanced-learn`` at predict time, not only at train time.
+# - If ``pip install numpy==1.26.4`` fails on your platform, install NumPy with conda
+#   first, then ``pip install -r requirements.txt`` with the rest.
+# -----------------------------------------------------------------------------
 
-imbalanced-learn==0.13.0
-joblib==1.4.2
-matplotlib==3.10.1
-numpy==2.2.2
-pandas==2.2.3
-scipy==1.15.2
-scikit-learn==1.6.1
-seaborn==0.13.2
+numpy==1.26.4
+pandas==2.3.3
+scipy==1.16.2
+joblib==1.5.2
+threadpoolctl==3.6.0
+scikit-learn==1.7.2
+imbalanced-learn==0.14.0

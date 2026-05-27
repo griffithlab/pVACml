@@ -13,10 +13,14 @@ Inputs (from manuscript/data/predict_new_case_data):
 - <sample>.MHC_II.all_epitopes.aggregated.tsv
 
 Usage (from repository root):
-    python manuscript/scripts/predict.py \\
-        --sample-name Test \\
-        --artifacts-dir models/v1_manuscript \\
-        --output-dir manuscript/test_prediction_results/predictions
+    python manuscript/scripts/predict.py
+
+Default paths (see ``SAMPLE_NAME``, ``ARTIFACTS_DIR``, ``OUTPUT_DIR`` at bottom of file):
+- Inputs: ``manuscript/data/predict_new_case_data/<sample>.*.tsv``
+- Artifacts: ``manuscript/manuscript_model/`` (``rf_downsample_model.pkl``, ``trained_imputer.joblib``, ``label_encoders.pkl``)
+- Output: ``manuscript/data/manuscript_prediction_results/``
+
+Environment: install ``manuscript/requirements.txt`` (Python 3.13.x and scikit-learn version should match the environment used to train the pickles). Unpickling the RF can require ``imbalanced-learn`` if the model is a ``BalancedRandomForestClassifier``.
 
 This implementation is adapted from pVACtools' ml_predictor module, but restricted to the pVACml repository layout.
 """
@@ -37,33 +41,49 @@ def _get_repo_paths() -> Tuple[Path, Path, Path]:
     # predict.py lives at manuscript/scripts/ → repo root is parents[2]
     base_dir = Path(__file__).resolve().parents[2]
     data_dir = base_dir / "manuscript" / "data" / "predict_new_case_data"
-    artifacts_dir = base_dir / "models" / "v1_manuscript"
+    artifacts_dir = base_dir / "manuscript" / "manuscript_model"
     return base_dir, data_dir, artifacts_dir
 
 
 def _resolve_artifact_paths(
     artifacts_dir: Path,
-    artifacts_version: str,
+    artifacts_version: str = "",
 ) -> Tuple[Path, Path, Path]:
     """
-    Resolve paths to model artifacts in the given directory for a specific version.
+    Resolve paths to model, imputer, and label encoders under ``artifacts_dir``.
 
-    Supported layouts:
-      (1) Flat: ``<artifacts_dir>/rf_downsample_model_{version}.pkl``, etc.
-      (2) Nested: ``<artifacts_dir>/{version}/rf_downsample_model_{version}.pkl``, etc.
+    Layouts:
+      (1) Flat (manuscript default): ``rf_downsample_model.pkl``, ``trained_imputer.joblib``,
+          ``label_encoders.pkl`` directly in ``artifacts_dir``.
+      (2) Versioned filenames: ``rf_downsample_model_{version}.pkl``, etc. when ``version`` is set.
+      (3) Nested folder: ``artifacts_dir / version /`` with the same flat filenames inside.
     """
+    version = (artifacts_version or "").strip()
+    if version:
+        v_flat = (
+            artifacts_dir / f"rf_downsample_model_{version}.pkl",
+            artifacts_dir / f"trained_imputer_{version}.joblib",
+            artifacts_dir / f"label_encoders_{version}.pkl",
+        )
+        if v_flat[0].is_file():
+            return v_flat
+        nested = artifacts_dir / version
+        if (nested / "rf_downsample_model.pkl").is_file():
+            return (
+                nested / "rf_downsample_model.pkl",
+                nested / "trained_imputer.joblib",
+                nested / "label_encoders.pkl",
+            )
     flat = (
-        artifacts_dir / f"rf_downsample_model_{artifacts_version}.pkl",
-        artifacts_dir / f"trained_imputer_{artifacts_version}.joblib",
-        artifacts_dir / f"label_encoders_{artifacts_version}.pkl",
+        artifacts_dir / "rf_downsample_model.pkl",
+        artifacts_dir / "trained_imputer.joblib",
+        artifacts_dir / "label_encoders.pkl",
     )
     if flat[0].is_file():
         return flat
-    nested = artifacts_dir / artifacts_version
-    return (
-        nested / f"rf_downsample_model_{artifacts_version}.pkl",
-        nested / f"trained_imputer_{artifacts_version}.joblib",
-        nested / f"label_encoders_{artifacts_version}.pkl",
+    raise FileNotFoundError(
+        f"No model pickle found under {artifacts_dir!s} "
+        f"(tried flat layout and version {version!r})."
     )
 
 
@@ -323,7 +343,7 @@ def merge_and_prepare_data(
 def clean_and_impute_data(
     merged_all: pd.DataFrame,
     artifacts_dir: Path,
-    artifacts_version: str,
+    artifacts_version: str = "",
 ) -> pd.DataFrame:
     """Apply label encoders and imputer from the saved artifacts."""
     print("Loading imputer and label encoders...")
@@ -364,7 +384,7 @@ def clean_and_impute_data(
 def make_ml_predictions(
     post_imputed_data: pd.DataFrame,
     artifacts_dir: Path,
-    artifacts_version: str,
+    artifacts_version: str = "",
     ml_threshold_accept: float = 0.55,
     ml_threshold_reject: float = 0.30,
 ) -> pd.DataFrame:
@@ -453,7 +473,7 @@ def create_final_output(
 def run_predictions(
     sample_name: str,
     artifacts_dir: Path | None = None,
-    artifacts_version: str = "numpy126",
+    artifacts_version: str = "",
     output_dir: Path | None = None,
     ml_threshold_accept: float = 0.55,
     ml_threshold_reject: float = 0.30,
@@ -483,7 +503,7 @@ def run_predictions(
     if not class2_agg.exists():
         raise FileNotFoundError(f"Class II aggregated file not found: {class2_agg}")
 
-    print(f"Starting prediction pipeline using artifacts version '{artifacts_version}'...")
+    print(f"Starting prediction pipeline using artifacts in directory '{artifacts_dir}'...")
     merged_all = merge_and_prepare_data(class1_agg, class1_all, class2_agg)
     post_imputed = clean_and_impute_data(merged_all, artifacts_dir, artifacts_version)
     post_imputed = make_ml_predictions(
@@ -500,9 +520,13 @@ def run_predictions(
 
 # Hard-coded configuration for manuscript reproducibility
 SAMPLE_NAME = "Test"
-ARTIFACTS_DIR = Path(__file__).resolve().parents[2] / "models" / "v1_manuscript"
-OUTPUT_DIR = Path(__file__).resolve().parents[2] / "results" / "predictions"
-ARTIFACTS_VERSION = "numpy126"
+ARTIFACTS_DIR = Path(__file__).resolve().parents[2] / "manuscript" / "manuscript_model"
+OUTPUT_DIR = (
+    Path(__file__).resolve().parents[2]
+    / "manuscript"
+    / "data"
+    / "manuscript_prediction_results"
+)
 ML_THRESHOLD_ACCEPT = 0.55
 ML_THRESHOLD_REJECT = 0.30
 
@@ -511,7 +535,6 @@ if __name__ == "__main__":
     run_predictions(
         sample_name=SAMPLE_NAME,
         artifacts_dir=ARTIFACTS_DIR,
-        artifacts_version=ARTIFACTS_VERSION,
         output_dir=OUTPUT_DIR,
         ml_threshold_accept=ML_THRESHOLD_ACCEPT,
         ml_threshold_reject=ML_THRESHOLD_REJECT,
