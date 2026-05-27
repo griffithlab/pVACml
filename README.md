@@ -17,7 +17,7 @@ The repository is organized into **two independent tracks**. They use **differen
 | Track | Purpose | Code location | Dependencies |
 |--------|---------|----------------|--------------|
 | **Manuscript** | Reproduce figures, analyses, manuscript model training workflows, and a **demonstration** prediction on a new case | [`manuscript/`](manuscript/) | [`manuscript/requirements.txt`](manuscript/requirements.txt) |
-| **pVACtools 7.0 (compatible)** | Retrain / refresh the pipeline model and artifacts intended for **pVACtools v7** integration | Repository **root** scripts + [`model/pvactools7.0_model/`](model/pvactools7.0_model/) | [`requirements.txt`](requirements.txt) (repository root) |
+| **pVACtools 7.0 (compatible)** | Retrain / refresh the pipeline model and artifacts intended for **pVACtools** integration | Repository **root** scripts + [`model/pvactools7.0_model/`](model/pvactools7.0_model/) | [`requirements.txt`](requirements.txt) (repository root) |
 
 **Important distinctions**
 
@@ -31,7 +31,7 @@ The repository is organized into **two independent tracks**. They use **differen
 ## Repository structure
 
 ```
-ITB_Automation_ML_Predictor/
+Home/
 ├── manuscript/                      # Publication reproducibility (NOT the v7-shipped bundle)
 │   ├── requirements.txt             # Python deps for all manuscript/scripts/*.py
 │   ├── manuscript_model/            # Artifacts used by manuscript/scripts/predict.py demo
@@ -111,9 +111,9 @@ Examples include prospective test evaluation, review-time analysis, and imputati
 
 Use this when **retraining** or regenerating artifacts for the **pVACtools v7**–compatible pipeline. Scripts are intended to be run **in this order**:
 
-1. [`impute_missing.py`](impute_missing.py) — load pre-imputation table, fit label encoders + `IterativeImputer`, write imputed table and encoder/imputer artifacts.
-2. [`train.py`](train.py) — train `BalancedRandomForestClassifier` (e.g. grid search), write best hyperparameters and the RF pickle.
-3. [`predict.py`](predict.py) — merge class I/II inputs for a sample, apply saved imputer/encoders/model, write ML prediction TSV.
+1. [`impute_missing.py`](impute_missing.py) — load pre-imputation table, impute missing values.
+2. [`train.py`](train.py) — tune and train `BalancedRandomForestClassifier` and saves the model.
+3. [`predict.py`](predict.py) — for a new case, merge class I/II inputs, apply saved imputer/encoders/model, write ML prediction TSV.
 
 ### Environment
 
@@ -134,15 +134,11 @@ The directory **`model/pvactools7.0_model/`** holds the model bundle **intended 
 |---------------|----------------|
 | `model/pvactools7.0_model/` | `pvactools/supporting_files/ml_model_artifacts/` |
 
-Git cannot keep two folders in different repositories synchronized by itself; the link above is the **canonical upstream location**. Use copy/PR (or an internal sync script) to publish updates. See [`model/pvactools7.0_model/README.md`](model/pvactools7.0_model/README.md).
-
-After retraining, ensure filenames and layout match what the pVACtools integration expects before copying.
-
 ---
 
 ## Dataset
 
-The training dataset comprises **1,943 expert-labeled neoantigen peptide candidates** spanning **33 patients** and **8 cancer types** from three clinical trials at Washington University School of Medicine:
+The entire dataset (training set, development test set, prospective test set) comprises **1,943 expert-labeled neoantigen peptide candidates** spanning **33 patients** and **8 cancer types** from three clinical trials at Washington University School of Medicine:
 
 | Trial | Cancer type | Patients |
 |---|---|---|
@@ -193,7 +189,7 @@ Automating immunogenomic tumor board decision-making for neoantigen cancer vacci
 ## Related resources
 
 - [pVACtools documentation](https://pvactools.readthedocs.io/en/7.0.0_docs/)
-- [pVACtools ML model artifacts on GitHub](https://github.com/griffithlab/pVACtools/tree/master/pvactools/supporting_files/ml_model_artifacts) (`ml_model_artifacts` — matches `model/pvactools7.0_model/` here)
+- [pVACtools ML model artifacts on GitHub](https://github.com/griffithlab/pVACtools/tree/master/pvactools/supporting_files/ml_model_artifacts)
 - [pVACview interface](https://pvactools.readthedocs.io/en/latest/pvacview.html)
 - [ImmunoNX pipeline](https://github.com/griffithlab/ImmunoNX_protocol)
 
