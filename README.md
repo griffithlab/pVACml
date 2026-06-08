@@ -1,4 +1,4 @@
-# pVACml
+# NEAT - Neoantigen Evaluation & Automated Triage
 
 **Machine learning models for neoantigen candidate classification in personalized cancer vaccine design**
 
