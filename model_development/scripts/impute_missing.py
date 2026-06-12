@@ -9,11 +9,11 @@ from sklearn.impute import IterativeImputer
 from sklearn.preprocessing import LabelEncoder
 
 
-# %% Paths (for reproducibility when used as a standalone script)
-BASE_DIR = Path(__file__).resolve().parent
-data_dir = BASE_DIR / "data"
+# %% Paths — this file lives in model_development/scripts/; data and model/ are siblings of scripts/
+_MODEL_DEV_ROOT = Path(__file__).resolve().parent.parent
+data_dir = _MODEL_DEV_ROOT / "data"
 # Imputer + label encoders for downstream train/predict
-model_dir = BASE_DIR / "model" / "pvactools7.0_model"
+model_dir = _MODEL_DEV_ROOT / "model" / "pvactools7.0_model"
 model_dir.mkdir(parents=True, exist_ok=True)
 numpy_version = "numpy126"  # compatible with pVACtools / NumPy 1.26 stack
 
@@ -27,7 +27,7 @@ if hasattr(sys.stdout, "reconfigure"):
 print()
 print("Impute missing values (fit encoders + IterativeImputer)", flush=True)
 print("-" * 60, flush=True)
-print(f"Working directory: {BASE_DIR}", flush=True)
+print(f"Working directory (model_development): {_MODEL_DEV_ROOT}", flush=True)
 
 # %% Load pre-imputation table (still contains missing numeric values)
 input_csv = data_dir / "merged_df_pre_imputation.csv"

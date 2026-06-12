@@ -6,6 +6,12 @@ This script:
 - Applies the published imputer and label encoders
 - Uses the trained Random Forest model to score each epitope
 - Writes a single aggregated TSV with updated ML predictions for MHC class I
+
+Run from ``model_development/scripts/`` (or any cwd). By default, pVACseq-style
+inputs are read from ``manuscript/data/predict_new_case_data/`` (bundled ``Test.*``
+demo files). Set ``output_dir`` or copy TSVs into ``model_development/data/`` if you
+want a self-contained ``model_development/`` tree. Artifacts default to
+``model_development/model/pvactools7.0_model/``.
 """
 
 from __future__ import annotations
@@ -19,13 +25,18 @@ import pandas as pd
 import pickle
 
 
+def _model_development_root() -> Path:
+    """``model_development/`` — parent of ``scripts/`` (where this file lives)."""
+    return Path(__file__).resolve().parent.parent
+
+
 def _get_repo_paths() -> Tuple[Path, Path, Path]:
-    """Return repo root, pVAC input directory, and default model-artifact directory."""
-    # This file lives at the repository root (…/ITB_Automation_ML_Predictor/predict.py).
-    base_dir = Path(__file__).resolve().parent
-    input_dir = base_dir / "manuscript" / "data" / "predict_new_case_data"
-    default_model_dir = base_dir / "model" / "pvactools7.0_model"
-    return base_dir, input_dir, default_model_dir
+    """Return model_development root, default input TSV directory, and artifact directory."""
+    root = _model_development_root()
+    # Demo ``Test.*`` inputs ship under manuscript/ in this repo; copy TSVs to ``model_development/data/`` to override.
+    default_input_dir = root.parent / "manuscript" / "data" / "predict_new_case_data"
+    default_model_dir = root / "model" / "pvactools7.0_model"
+    return root, default_input_dir, default_model_dir
 
 
 def _resolve_artifact_paths(
@@ -451,17 +462,17 @@ def run_predictions(
             f"ml_threshold_reject ({ml_threshold_reject}) must be <= ml_threshold_accept ({ml_threshold_accept})."
         )
 
-    _, data_dir, default_model_dir = _get_repo_paths()
+    _, input_dir, default_model_dir = _get_repo_paths()
     model_dir = model_dir or default_model_dir
     model_dir = Path(model_dir)
 
     if output_dir is None:
-        output_dir = Path(__file__).resolve().parent / "data"
+        output_dir = _model_development_root() / "data"
     output_dir = Path(output_dir)
 
-    class1_agg = data_dir / f"{sample_name}.MHC_I.all_epitopes.aggregated.tsv"
-    class1_all = data_dir / f"{sample_name}.MHC_I.all_epitopes.tsv"
-    class2_agg = data_dir / f"{sample_name}.MHC_II.all_epitopes.aggregated.tsv"
+    class1_agg = input_dir / f"{sample_name}.MHC_I.all_epitopes.aggregated.tsv"
+    class1_all = input_dir / f"{sample_name}.MHC_I.all_epitopes.tsv"
+    class2_agg = input_dir / f"{sample_name}.MHC_II.all_epitopes.aggregated.tsv"
 
     if not class1_agg.exists():
         raise FileNotFoundError(f"Class I aggregated file not found: {class1_agg}")
@@ -488,9 +499,9 @@ def run_predictions(
 # Hard-coded configuration
 SAMPLE_NAME = "Test"
 # Artifacts: rf_downsample_model_<version>.pkl, trained_imputer_<version>.joblib, label_encoders_<version>.pkl
-MODEL_DIR = Path(__file__).resolve().parent / "model" / "pvactools7.0_model"
-# Predictions written under repo ``data/`` (see ``run_predictions`` default ``output_dir``)
-OUTPUT_DIR = Path(__file__).resolve().parent / "data"
+MODEL_DIR = _model_development_root() / "model" / "pvactools7.0_model"
+# Predictions written under model_development/data/ by default
+OUTPUT_DIR = _model_development_root() / "data"
 ARTIFACTS_VERSION = "numpy126"
 ML_THRESHOLD_ACCEPT = 0.55
 ML_THRESHOLD_REJECT = 0.30

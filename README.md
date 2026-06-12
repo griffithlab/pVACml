@@ -12,17 +12,16 @@
 
 pVACml houses the machine learning models and analysis code developed to support automated neoantigen candidate pre-classification within the [pVACtools](https://pvactools.readthedocs.io/en/7.0.0_docs/) suite. The model is trained on expert Immunogenomics Tumor Board (ITB) decisions from real-world personalized cancer vaccine clinical trials and classifies neoantigen peptide candidates as **Accept**, **Review**, or **Reject** based on a combination of genomic, expression, and MHC binding features.
 
-The repository is organized into **two independent tracks**. They use **different dependency files** and **different model bundles**:
+The repository is organized into **two independent sections**. They use **different dependency files** and **different model bundles**:
 
-| Track | Purpose | Code location | Dependencies |
+| Section | Purpose | Code location | Dependencies |
 |--------|---------|----------------|--------------|
 | **Manuscript** | Reproduce figures, analyses, manuscript model training workflows, and a **demonstration** prediction on a new case | [`manuscript/`](manuscript/) | [`manuscript/requirements.txt`](manuscript/requirements.txt) |
-| **pVACtools 7.0 (compatible)** | Retrain / refresh the pipeline model and artifacts intended for **pVACtools** integration | Repository **root** scripts + [`model/pvactools7.0_model/`](model/pvactools7.0_model/) | [`requirements.txt`](requirements.txt) (repository root) |
+| **Model development** | Retrain / refresh the pipeline model and artifacts intended for **pVACtools** integration (current version compatible with pVACtools 7.0) | [`model_development/`](model_development/) | [`model_development/requirements.txt`](model_development/requirements.txt) |
 
 **Important distinctions**
 
-- The **manuscript** track reflects the paper’s analyses and bundled manuscript model. It is **not** the same artifact bundle that ships inside pVACtools 7.0.
-- The **pVACtools 7.0** track is the one meant for **future retraining** and for the files that are **copied into the pVACtools codebase** for the v7 ML pipeline. The staging folder is **`model/pvactools7.0_model/`**, which corresponds to [`pvactools/supporting_files/ml_model_artifacts/`](https://github.com/griffithlab/pVACtools/tree/master/pvactools/supporting_files/ml_model_artifacts) in [griffithlab/pVACtools](https://github.com/griffithlab/pVACtools) (see [`model/pvactools7.0_model/README.md`](model/pvactools7.0_model/README.md)).
+- The **Model development** section is the one meant for **future retraining** and for the files that are **copied into the pVACtools codebase** for the ML function. The staging folder is **`model_development/model/pvactools7.0_model/`**, which corresponds to [`pvactools/supporting_files/ml_model_artifacts/`](https://github.com/griffithlab/pVACtools/tree/master/pvactools/supporting_files/ml_model_artifacts) in [griffithlab/pVACtools](https://github.com/griffithlab/pVACtools) (see [`model_development/model/pvactools7.0_model/README.md`](model_development/model/pvactools7.0_model/README.md)).
 
 > End users running pVACseq with ML enabled should follow [pVACtools documentation](https://pvactools.readthedocs.io) (e.g. `pvacseq add_ml_predictions`). This README focuses on **developers** reproducing the paper or refreshing the v7 model from this repo.
 
@@ -31,15 +30,20 @@ The repository is organized into **two independent tracks**. They use **differen
 ## Repository structure
 
 ```
-Home/
-├── manuscript/                      # Publication reproducibility (NOT the v7-shipped bundle)
-│   ├── requirements.txt             # Python deps for all manuscript/scripts/*.py
-│   ├── manuscript_model/            # Artifacts used by manuscript/scripts/predict.py demo
+NEAT/
+├── README.md
+├── LICENSE
+├── .gitignore
+│
+├── manuscript/                      # Publication reproducibility (NOT the pVACtools-shipped bundle)
+│   ├── requirements.txt             # Python deps for manuscript/scripts/*.py
+│   ├── manuscript_model/          # Artifacts for manuscript/scripts/predict.py demo
 │   ├── data/
 │   │   ├── predict_new_case_data/   # Demo inputs for manuscript prediction script
 │   │   ├── training_testing_data/
 │   │   ├── imputation_analysis/
 │   │   ├── review_time_analysis_data/
+│   │   ├── manuscript_prediction_results/
 │   │   └── …
 │   └── scripts/
 │       ├── ml_randomforest_model.py
@@ -49,24 +53,25 @@ Home/
 │       ├── imputation_analysis.py
 │       └── review_time_analysis.py
 │
-├── model/
-│   └── pvactools7.0_model/          # Staging = pVACtools pvactools/supporting_files/ml_model_artifacts
-│       ├── README.md                # Maps this folder → upstream GitHub path
-│       ├── rf_downsample_model_*.pkl
-│       ├── trained_imputer_*.joblib
-│       └── label_encoders_*.pkl
-│
-├── data/                            # Root-level training / imputation tables (pVACtools track)
-├── impute_missing.py                # pVACtools track — step 1: fit imputer + encoders
-├── train.py                         # pVACtools track — step 2: grid search + train RF
-├── predict.py                       # pVACtools track — step 3: score a new case
-├── requirements.txt                 # Python deps for root impute / train / predict scripts
-└── README.md
+└── model_development/               # Model development / pVACtools-oriented pipeline
+    ├── requirements.txt             # Python deps for model_development/scripts/*.py
+    ├── data/                        # Pre- & post-imputation tables; prediction outputs
+    ├── scripts/
+    │   ├── impute_missing.py        # Step 1: fit encoders + IterativeImputer
+    │   ├── train.py                 # Step 2: tune + train BalancedRandomForest
+    │   └── predict.py               # Step 3: score a new case
+    └── model/
+        ├── temporary_model_artifacts/   # e.g. grid-search checkpoints (best mtry/ntree)
+        └── pvactools7.0_model/          # Staging → pVACtools …/ml_model_artifacts
+            ├── README.md                # Maps this folder → upstream GitHub path
+            ├── rf_downsample_model_*.pkl
+            ├── trained_imputer_*.joblib
+            └── label_encoders_*.pkl
 ```
 
 ---
 
-## Track 1: Manuscript (`manuscript/`)
+## Manuscript (`manuscript/`)
 
 Use this when reproducing **figures, statistical analyses, manuscript RF/logistic workflows**, and the **manuscript** walkthrough of prediction on a new case.
 
@@ -76,7 +81,7 @@ Use this when reproducing **figures, statistical analyses, manuscript RF/logisti
 pip install -r manuscript/requirements.txt
 ```
 
-Use **only** [`manuscript/requirements.txt`](manuscript/requirements.txt) for scripts under [`manuscript/scripts/`](manuscript/scripts/). That environment is aligned with the paper’s tooling (e.g. matplotlib, seaborn, broader analysis stack) and is **separate** from the minimal root `requirements.txt`.
+Use **only** [`manuscript/requirements.txt`](manuscript/requirements.txt) for scripts under [`manuscript/scripts/`](manuscript/scripts/). That environment is aligned with the paper’s tooling (e.g. matplotlib, seaborn, broader analysis stack) and is **separate** from [`model_development/requirements.txt`](model_development/requirements.txt).
 
 ### Demo prediction (manuscript)
 
@@ -107,32 +112,32 @@ Examples include prospective test evaluation, review-time analysis, and imputati
 
 ---
 
-## Track 2: pVACtools 7.0–compatible pipeline (repository root)
+## Model development (`model_development/`)
 
-Use this when **retraining** or regenerating artifacts for the **pVACtools v7**–compatible pipeline. Scripts are intended to be run **in this order**:
+Use this when **retraining** or regenerating artifacts for the **pVACtools**–compatible pipeline. Scripts live under **`model_development/scripts/`** and are intended to be run **in this order**:
 
-1. [`impute_missing.py`](impute_missing.py) — load pre-imputation table, impute missing values.
-2. [`train.py`](train.py) — tune and train `BalancedRandomForestClassifier` and saves the model.
-3. [`predict.py`](predict.py) — for a new case, merge class I/II inputs, apply saved imputer/encoders/model, write ML prediction TSV.
+1. [`model_development/scripts/impute_missing.py`](model_development/scripts/impute_missing.py) — load pre-imputation table, impute missing values.
+2. [`model_development/scripts/train.py`](model_development/scripts/train.py) — tune and train `BalancedRandomForestClassifier` and save the model.
+3. [`model_development/scripts/predict.py`](model_development/scripts/predict.py) — for a new case, merge class I/II inputs, apply saved imputer/encoders/model, write ML prediction TSV.
 
 ### Environment
 
 ```bash
-pip install -r requirements.txt
+pip install -r model_development/requirements.txt
 ```
 
-Use the repository root [`requirements.txt`](requirements.txt) (NumPy / scikit-learn / imbalanced-learn pins aligned with the `neoantigen_ml_numpy126`–style stack used for these scripts). Do **not** mix this file with `manuscript/requirements.txt` unless you understand the version differences.
+Use [`model_development/requirements.txt`](model_development/requirements.txt) (NumPy / scikit-learn / imbalanced-learn pins aligned with the `neoantigen_ml_numpy126`–style stack used for these scripts). Do **not** mix this file with `manuscript/requirements.txt` unless you understand the version differences.
 
 ### Artifacts shipped to pVACtools
 
-The directory **`model/pvactools7.0_model/`** holds the model bundle **intended to be copied into the pVACtools repository** for the v7 ML path. In **pVACtools**, the same files live under:
+The directory **`model_development/model/pvactools7.0_model/`** holds the model bundle **intended to be copied into the pVACtools repository** for the v7 ML path. In **pVACtools**, the same files live under:
 
 **[`pvactools/supporting_files/ml_model_artifacts/`](https://github.com/griffithlab/pVACtools/tree/master/pvactools/supporting_files/ml_model_artifacts)**  
 ([`griffithlab/pVACtools`](https://github.com/griffithlab/pVACtools) on GitHub)
 
-| Here (pVACml) | In pVACtools |
-|---------------|----------------|
-| `model/pvactools7.0_model/` | `pvactools/supporting_files/ml_model_artifacts/` |
+| Here (this repo) | In pVACtools |
+|------------------|----------------|
+| `model_development/model/pvactools7.0_model/` | `pvactools/supporting_files/ml_model_artifacts/` |
 
 ---
 
@@ -170,7 +175,7 @@ pvacseq add_ml_predictions \
 
 Predictions are displayed in **pVACview** alongside binding affinity, expression, and variant-level features. Predicted labels are pre-populated but fully editable during ITB review.
 
-**Developers:** when updating the bundled model in pVACtools from this repository, copy from **`model/pvactools7.0_model/`** into **[`pvactools/supporting_files/ml_model_artifacts/`](https://github.com/griffithlab/pVACtools/tree/master/pvactools/supporting_files/ml_model_artifacts)** after completing the root **impute → train** (and validate **predict**) workflow with [`requirements.txt`](requirements.txt).
+**Developers:** when updating the bundled model in pVACtools from this repository, copy from **`model_development/model/pvactools7.0_model/`** into **[`pvactools/supporting_files/ml_model_artifacts/`](https://github.com/griffithlab/pVACtools/tree/master/pvactools/supporting_files/ml_model_artifacts)** after completing **`model_development/scripts`:** `impute_missing.py` → `train.py` → `predict.py` (and validate outputs), using [`model_development/requirements.txt`](model_development/requirements.txt).
 
 ---
 
