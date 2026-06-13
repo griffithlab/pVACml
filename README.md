@@ -14,16 +14,16 @@ pVACml houses the machine learning models and analysis code developed to support
 
 The repository is organized into **two independent sections**. They use **different dependency files** and **different model bundles**:
 
-| Section | Purpose | Code location | Dependencies |
+| Section | Purpose | Code & data location | Dependencies |
 |--------|---------|----------------|--------------|
-| **Manuscript** | Reproduce figures, analyses, manuscript model training workflows, and a **demonstration** prediction on a new case | [`manuscript/`](manuscript/) | [`manuscript/requirements.txt`](manuscript/requirements.txt) |
+| **Manuscript** | Reproduce figures, analyses, manuscript model training workflows, and a demonstration prediction on a new case | [`manuscript/`](manuscript/) | [`manuscript/requirements.txt`](manuscript/requirements.txt) |
 | **Model development** | Retrain / refresh the pipeline model and artifacts intended for **pVACtools** integration (current version compatible with pVACtools 7.0) | [`model_development/`](model_development/) | [`model_development/requirements.txt`](model_development/requirements.txt) |
 
 **Important distinctions**
 
 - The **Model development** section is the one meant for **future retraining** and for the files that are **copied into the pVACtools codebase** for the ML function. The staging folder is **`model_development/model/pvactools7.0_model/`**, which corresponds to [`pvactools/supporting_files/ml_model_artifacts/`](https://github.com/griffithlab/pVACtools/tree/master/pvactools/supporting_files/ml_model_artifacts) in [griffithlab/pVACtools](https://github.com/griffithlab/pVACtools) (see [`model_development/model/pvactools7.0_model/README.md`](model_development/model/pvactools7.0_model/README.md)).
 
-> End users running pVACseq with ML enabled should follow [pVACtools documentation](https://pvactools.readthedocs.io) (e.g. `pvacseq add_ml_predictions`). This README focuses on **developers** reproducing the paper or refreshing the v7 model from this repo.
+> End users running pVACseq with ML enabled should follow [pVACtools documentation](https://pvactools.readthedocs.io/en/latest/pvacview/pvacseq_module/pvacseq_vignette.html#ml-based-neoantigen-evaluation-predictions) (e.g. `pvacseq add_ml_predictions`). This README focuses on **developers** reproducing the paper or refreshing the v7 model from this repo.
 
 ---
 
@@ -36,8 +36,8 @@ NEAT/
 ├── .gitignore
 │
 ├── manuscript/                      # Publication reproducibility (NOT the pVACtools-shipped bundle)
-│   ├── requirements.txt             # Python deps for manuscript/scripts/*.py
-│   ├── manuscript_model/          # Artifacts for manuscript/scripts/predict.py demo
+│   ├── requirements.txt             
+│   ├── manuscript_model/            # Artifacts for manuscript/scripts/predict.py demo
 │   ├── data/
 │   │   ├── predict_new_case_data/   # Demo inputs for manuscript prediction script
 │   │   ├── training_testing_data/
@@ -53,17 +53,17 @@ NEAT/
 │       ├── imputation_analysis.py
 │       └── review_time_analysis.py
 │
-└── model_development/               # Model development / pVACtools-oriented pipeline
-    ├── requirements.txt             # Python deps for model_development/scripts/*.py
+└── model_development/               # Model development 
+    ├── requirements.txt             
     ├── data/                        # Pre- & post-imputation tables; prediction outputs
     ├── scripts/
     │   ├── impute_missing.py        # Step 1: fit encoders + IterativeImputer
     │   ├── train.py                 # Step 2: tune + train BalancedRandomForest
     │   └── predict.py               # Step 3: score a new case
     └── model/
-        ├── temporary_model_artifacts/   # e.g. grid-search checkpoints (best mtry/ntree)
+        ├── temporary_model_artifacts/   
         └── pvactools7.0_model/          # Staging → pVACtools …/ml_model_artifacts
-            ├── README.md                # Maps this folder → upstream GitHub path
+            ├── README.md                
             ├── rf_downsample_model_*.pkl
             ├── trained_imputer_*.joblib
             └── label_encoders_*.pkl
@@ -99,7 +99,6 @@ From the repository root:
 python manuscript/scripts/predict.py
 ```
 
-Paths, artifact directory, artifact version string, output directory, and thresholds are controlled by the constants at the bottom of `manuscript/scripts/predict.py` (see that file for defaults).
 
 ### Other manuscript analyses
 
