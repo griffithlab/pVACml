@@ -8,13 +8,13 @@ from sklearn.model_selection import GridSearchCV, train_test_split
 import joblib
 
 
-# %% Paths (for reproducibility when used as a standalone script)
-BASE_DIR = Path(__file__).resolve().parent
-data_dir = BASE_DIR / "data"
-# Grid-search checkpoints and best-hparam pickles (created under repo `model/`)
-temporary_artifacts_dir = BASE_DIR / "model" / "temporary_model_artifacts"
-# Final RF bundle for prediction (same layout as `models/pvactools7.0_model` in this repo)
-model_dir = BASE_DIR / "model" / "pvactools7.0_model"
+# %% Paths — this file lives in model_development/scripts/; data and model/ are siblings of scripts/
+_MODEL_DEV_ROOT = Path(__file__).resolve().parent.parent
+data_dir = _MODEL_DEV_ROOT / "data"
+# Grid-search checkpoints and best-hparam pickles
+temporary_artifacts_dir = _MODEL_DEV_ROOT / "model" / "temporary_model_artifacts"
+# Final RF bundle for prediction
+model_dir = _MODEL_DEV_ROOT / "model" / "pvactools7.0_model"
 temporary_artifacts_dir.mkdir(parents=True, exist_ok=True)
 model_dir.mkdir(parents=True, exist_ok=True)
 numpy_version = "numpy126"  # compatible with packages in pVACtools 7.0
