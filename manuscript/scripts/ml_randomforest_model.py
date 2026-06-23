@@ -1,8 +1,9 @@
 from pathlib import Path
-
+import joblib
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import seaborn as sns
 from imblearn.ensemble import BalancedRandomForestClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import (
@@ -10,16 +11,21 @@ from sklearn.metrics import (
     average_precision_score,
     confusion_matrix,
     f1_score,
+    precision_recall_curve,
     recall_score,
     roc_auc_score,
+    roc_curve,
 )
 from sklearn.model_selection import GridSearchCV
 
 # %% Paths (for reproducibility when used as a standalone script)
+# Script lives at NEAT/manuscript/scripts/ → manuscript/ is parents[1]
 BASE_DIR = Path(__file__).resolve().parents[1]
 data_dir = BASE_DIR / "data" / "training_testing_data"
 outdir = BASE_DIR / "results" / "randomforest"
+model_artifacts_dir = BASE_DIR / "manuscript_model"
 outdir.mkdir(parents=True, exist_ok=True)
+model_artifacts_dir.mkdir(parents=True, exist_ok=True)
 
 
 # %% Load data
@@ -100,8 +106,6 @@ def calculate_metrics(y_true, y_pred, y_pred_proba, positive_class=None):
     }
 
 
-## Random Forest strategies with class weighting vs down-sampling
-
 # Shared RF hyperparameter grid
 param_grid_rf = {
     'max_features': list(range(1, X_train.shape[1] + 1)),  # 1..n_features
@@ -149,7 +153,186 @@ def run_grid_search(strategy_name, base_estimator, X_train, y_train, X_test, y_t
 
     return best_model, metrics
 
+# %% RF with class weighting
+rf_cw_tune = RandomForestClassifier(
+    class_weight='balanced_subsample',
+    oob_score=True,
+    random_state=918,
+    n_jobs=-1,
+)
 
+grid_search_cw = GridSearchCV(
+    estimator=rf_cw_tune,
+    param_grid=param_grid_rf,
+    scoring='roc_auc',
+    cv=3,
+    n_jobs=-1,
+    verbose=2,
+)
+
+grid_search_cw.fit(X_train, y_train)
+
+best_params_cw = grid_search_cw.best_params_
+best_mtry_cw = best_params_cw['max_features']
+best_ntree_cw = best_params_cw['n_estimators']
+print(f"Best max_features (mtry): {best_mtry_cw}")
+print(f"Best n_estimators (ntree): {best_ntree_cw}")
+print(f"Best parameters: {best_params_cw}")
+
+joblib.dump(best_mtry_cw, outdir / "best_mtry_rf_cw.pkl")
+joblib.dump(best_ntree_cw, outdir / "best_ntree_rf_cw.pkl")
+
+results_df_cw = pd.DataFrame(grid_search_cw.cv_results_)
+results_df_cw.to_csv(outdir / "grid_search_results_cw.csv", index=False)
+print("GridSearchCV results saved to grid_search_results_cw.csv")
+
+with open(outdir / "best_params_cw.txt", "w") as f:
+    f.write(f"Best max_features (mtry): {best_mtry_cw}\n")
+    f.write(f"Best n_estimators (ntree): {best_ntree_cw}\n")
+    f.write(f"Best parameters: {best_params_cw}\n")
+print("Best parameters saved to best_params_cw.txt")
+
+joblib.dump(rf_cw_tune, outdir / "rf_cw_tune_model.pkl")
+
+rf_cw = RandomForestClassifier(
+    n_estimators=best_ntree_cw,
+    max_features=best_mtry_cw,
+    class_weight='balanced_subsample',
+    oob_score=True,
+    random_state=918,
+    n_jobs=-1,
+)
+rf_cw.fit(X_train, y_train)
+
+joblib.dump(rf_cw, outdir / "rf_classweight_model.pkl")
+
+# OOB
+oob_error_cw = 1 - rf_cw.oob_score_
+print(f"OOB Error: {oob_error_cw}")
+
+oob_predictions_cw = rf_cw.oob_decision_function_[:, 1] > 0.5
+oob_predictions_cw_int = oob_predictions_cw.astype(int)
+
+oob_conf_matrix_cw = confusion_matrix(y_train, oob_predictions_cw_int)
+print("OOB Confusion Matrix:")
+print(oob_conf_matrix_cw)
+
+TN, FP, FN, TP = oob_conf_matrix_cw.ravel()
+oob_sensitivity_cw = TP / (TP + FN)
+oob_specificity_cw = TN / (TN + FP)
+
+print(f"Sensitivity (Recall or True Positive Rate): {oob_sensitivity_cw}")
+print(f"Specificity (True Negative Rate): {oob_specificity_cw}")
+
+plt.figure(figsize=(7, 5))
+sns.heatmap(
+    oob_conf_matrix_cw,
+    annot=True,
+    fmt='d',
+    cmap='Blues',
+    xticklabels=['Predicted Reject', 'Predicted Accept'],
+    yticklabels=['Actual Reject', 'Actual Accept'],
+)
+plt.xlabel('Predicted Labels')
+plt.ylabel('True Labels')
+plt.title('Python OOB Confusion Matrix (Class Weighting)')
+plt.savefig(outdir / "oob_conf_matrix_cw.png")
+plt.show()
+
+rf_cw_oob_roc_auc = roc_auc_score(y_train, rf_cw.oob_decision_function_[:, 1])
+print(f"OOB ROC AUC: {rf_cw_oob_roc_auc}")
+
+fpr, tpr, _ = roc_curve(y_train, rf_cw.oob_decision_function_[:, 1])
+plt.plot(fpr, tpr, label=f'OOB ROC curve (area = {rf_cw_oob_roc_auc:.2f})')
+plt.plot([0, 1], [0, 1], 'k--')
+plt.xlabel('False Positive Rate')
+plt.ylabel('True Positive Rate')
+plt.title('Python OOB ROC Curve (Class Weighting)')
+plt.legend(loc='best')
+plt.savefig(outdir / "oob_roc_curve_cw.png")
+plt.show()
+
+# Test set evaluation
+rf_cw_pred = rf_cw.predict(X_test)
+rf_cw_conf_matrix = confusion_matrix(y_test, rf_cw_pred)
+print("Test Set Confusion Matrix:")
+print(rf_cw_conf_matrix)
+
+rf_cw_pred_accuracy = accuracy_score(y_test, rf_cw_pred)
+print(f"Test Set Accuracy: {rf_cw_pred_accuracy}")
+
+TN, FP, FN, TP = [int(x) for x in rf_cw_conf_matrix.ravel()]
+rf_cw_sensitivity = TP / (TP + FN)
+rf_cw_specificity = TN / (TN + FP)
+
+print(f"Sensitivity (Recall or True Positive Rate): {rf_cw_sensitivity}")
+print(f"Specificity (True Negative Rate): {rf_cw_specificity}")
+
+rf_cw_pred_prob = rf_cw.predict_proba(X_test)[:, 1]
+rf_cw_roc_auc = roc_auc_score(y_test, rf_cw_pred_prob)
+print(f"Test Set ROC AUC: {rf_cw_roc_auc}")
+
+rf_cw_f1 = f1_score(y_test, rf_cw_pred)
+print(f"Test Set F1 Score: {rf_cw_f1}")
+
+plt.figure(figsize=(10, 8))
+sns.heatmap(
+    rf_cw_conf_matrix,
+    annot=True,
+    fmt='d',
+    cmap='Blues',
+    xticklabels=['Predicted Reject', 'Predicted Accept'],
+    yticklabels=['Actual Reject', 'Actual Accept'],
+    annot_kws={'size': 16},
+)
+plt.xlabel('Predicted Labels')
+plt.ylabel('True Labels')
+plt.xticks(fontsize=16)
+plt.savefig(outdir / "rf_cw_test_conf_matrix.png")
+plt.show()
+
+fpr, tpr, _ = roc_curve(y_test, rf_cw_pred_prob)
+plt.plot(fpr, tpr, label=f'Test Set ROC curve (AUC = {rf_cw_roc_auc:.2f})')
+plt.plot([0, 1], [0, 1], 'k--')
+plt.xlabel('False Positive Rate')
+plt.ylabel('True Positive Rate')
+plt.legend(loc='best')
+plt.savefig(outdir / "rf_cw_test_set_roc_curve.png")
+plt.show()
+
+test_precision, test_recall, _ = precision_recall_curve(y_test, rf_cw_pred_prob)
+rf_cw_auc_pr = average_precision_score(y_test, rf_cw_pred_prob)
+print(f"Test Set AUC-PR (class weighting): {rf_cw_auc_pr}")
+
+plt.plot(test_recall, test_precision, label=f'Test Set PR curve (AP = {rf_cw_auc_pr:.2f})')
+plt.xlabel('Recall')
+plt.ylabel('Precision')
+plt.title('Test Set Precision-Recall Curve (Class Weighting)')
+plt.legend()
+plt.savefig(outdir / "rf_cw_test_set_pr_curve.png")
+plt.show()
+
+# %% RF with class weighting variable importance
+importances_cw = rf_cw.feature_importances_
+indices_cw = np.argsort(importances_cw)[::-1]
+features = X_train.columns
+
+feature_importance_df_cw = pd.DataFrame({
+    "Feature": features[indices_cw],
+    "Importance": importances_cw[indices_cw],
+})
+feature_importance_df_cw.to_csv(outdir / "rf_cw_feature_importance.csv", index=False)
+
+plt.figure(figsize=(10, 8))
+plt.barh(range(15), importances_cw[indices_cw[:15]], align="center")
+plt.yticks(range(15), features[indices_cw[:15]], fontsize=16)
+plt.xticks(fontsize=16)
+plt.gca().invert_yaxis()
+plt.xlabel('Importance', fontsize=18)
+plt.ylabel('Features', fontsize=18)
+plt.tight_layout()
+plt.savefig(outdir / "rf_cw_variable_importance_top_15.png")
+plt.show()
 
 # %% RF with down-sampling
 # Get the total number of CPU cores
@@ -168,16 +351,9 @@ rf = BalancedRandomForestClassifier(
     bootstrap=True  # Set bootstrap=True for OOB estimation
 )
 
-# Define search space for max_features (mtry) and n_estimators (ntree)
-param_grid = {
-    'max_features': list(range(1, 72)),  # mtry from 1 to 72 since there are 72 features in total
-    'n_estimators': list(range(1, 5001, 50))  # ntree from 1 to 5000 with 50 interval
-}
-
-# Grid search with OOB scoring (not used directly, but available after fit)
 grid_search = GridSearchCV(
     estimator=rf,               # The base model to tune (BalancedRandomForestClassifier in this case)
-    param_grid=param_grid,      # Dictionary of hyperparameters to search over
+    param_grid=param_grid_rf,     # Dictionary of hyperparameters to search over
     scoring='roc_auc',         # Metric to evaluate model performance (could choose "accuracy, "f1", "roc_auc", etc.)
     cv=3,                       # Number of cross-validation folds (3-fold cross-validation)
     n_jobs=-1,       # Number of CPU cores to use for parallel processing
@@ -228,7 +404,7 @@ rf_ds.fit(X_train, y_train)
 
 # Save the trained model
 joblib.dump(rf_ds, outdir / "rf_downsample_model.pkl")
-joblib.dump(rf_ds, project_dir / "output_python" / "model_artifacts" / "rf_downsample_model.pkl")
+joblib.dump(rf_ds, model_artifacts_dir / "rf_downsample_model.pkl")
 
 
 # OOB
@@ -346,8 +522,6 @@ plt.legend(loc='best')
 plt.savefig(outdir / "rf_ds_test_set_roc_curve.png")
 plt.show()
 
-from sklearn.metrics import precision_recall_curve, average_precision_score
-# For test set predictions
 test_precision, test_recall, test_thresholds = precision_recall_curve(y_test, rf_ds.predict_proba(X_test)[:, 1])
 rf_ds_auc_pr = average_precision_score(y_test, rf_ds.predict_proba(X_test)[:, 1])
 
